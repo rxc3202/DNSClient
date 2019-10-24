@@ -47,9 +47,7 @@ class Message():
     MAX_SIZE = 500
 
     """ All values stored as byte arrays in big endian"""
-    def __init__(self, msgType=QR.QUERY.value, identifier=0, flags=0,
-            QDCount=0, ANCount=0, NSCount=0, ARCount=0):
-        self.type = Message.int_to_net(msgType)
+    def __init__(self):
         self.identifier = bytearray(2)
         self.flags = bytearray(2)
         self.QDCount = bytearray(2)
@@ -82,21 +80,31 @@ class Message():
     def net_to_int(cls, network_byte):
         return int(network_byte.hex(), 16)
 
-    @classmethod
-    def decode(cls, bytearr):
+    def decode(self, bytearr):
         # Get header information
-        ID = byetarr[0:3]
-        Flags = bytearr[3:5]
-        QDCount = bytearr[5:7]
-        ANCount = bytearr[7:9]
-        NSCount = bytearr[9:11]
-        ARCount = bytearr[11:13] 
-        data = bytearr[13:]
+        self.identifier = byetarr[0:3]
+        self.flags = bytearr[3:5]
+        self.QDCount = bytearr[5:7]
+        self.ANCount = bytearr[7:9]
+        self.NSCount = bytearr[9:11]
+        self.ARCount = bytearr[11:13] 
+        self.data = bytearr[13:]
 
 
-    @classmethod
-    def encode(cls, msg):
-        pass
+    def encode(self):
+        payload = b''
+        payload += self.identifier
+        payload += self.flags
+        payload += self.QDCount
+        payload += self.ANCount
+        payload += self.NSCount
+        payload += self.ARCount
+        payload += self.data
+        return payload
+    
+
+    def set_identifier(self, identifier):
+        self.identifier = Message.int_to_net(identifier)
 
 
     def set_flags(self, qr=0, opcode=0, aa=0, tc=0,
@@ -106,8 +114,8 @@ class Message():
                 bin(opcode)[2:].zfill(4),
                 bin(aa)[2:],
                 bin(tc)[2:],
-                bin(ra)[2:],
                 bin(rd)[2:],
+                bin(ra)[2:],
                 bin(0)[2:].zfill(3),
                 bin(rcode)[2:].zfill(4)
             ]
@@ -118,23 +126,27 @@ class Message():
             self.flags = bytearray(hex_str)
             return self.flags
 
+    """ Modify Question Count manually """
     def set_QDCount(self, count):
-        self.QDCount = bytearray((count).to_bytes(2, "big")) 
+        self.QDCount = Message.int_to_net(count)
 
 
+    """ Modify Question Count manually """
     def set_ANCount(self, count):
-        self.ANCount = bytearray((count).to_bytes(2, "big"))
+        self.ANCount = Message.int_to_net(count)
 
 
+    """ Modify Question Count manually """
     def set_NSCount(self, count):
-        self.NSCount = bytearray((count).to_bytes(2, "big"))
+        self.NSCount = Message.int_to_net(count)
 
-
+    """ Modify Question Count manually """
     def set_ARCount(self, count):
-        self.ARCount = bytearray((count).to_bytes(2, "big"))
+        self.ARCount = Message.int_to_net(count)
 
 
-    def add_question(self, fqdn, qtype=QTYPE.A, rsrc_class=1):
+    """ Add a question to your query """
+    def add_question(self, fqdn, qtype=QTYPE.A.value, rsrc_class=1):
         question = bytearray(b'')
         # Generate the Question Name field
         qname = bytearray(b'')
@@ -142,12 +154,12 @@ class Message():
             qname += len(domain).to_bytes(1, "big")
             qname += bytes(domain, 'utf-8')
         qname += bytes([0])                   # end the labels
-        qname += bytes((4 - len(qname) % 4))  # pad to nearest word
+        #qname += bytes((4 - len(qname) % 4))  # pad to nearest word
         question += qname
         # Generate Question Type field
-        question += bytes(qtype.value.to_bytes(2, "big"))
+        question += Message.int_to_net(qtype)
         # Generate Question Class field
-        question += bytes(rsrc_class.to_bytes(2, "big"))
+        question += Message.int_to_net(rsrc_class)
         self.data += question
         return question
 
@@ -174,4 +186,10 @@ class Message():
     def get_questions(self):
         pass
         
-
+x = Message()
+x.set_identifier(48879)
+x.set_flags(rd=1)
+x.add_question("www.northeastern.rit.edu")
+x.set_QDCount(1)
+print(x.get_header())
+print(len(x.encode()), "bytes :", x.encode())
