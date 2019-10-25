@@ -82,6 +82,7 @@ class Message():
     def net_to_int(cls, network_byte):
         return int(network_byte.hex(), 16)
 
+
     """ Decode DNS packet and place fields into this instance """
     def decode(self, bytearr):
         # Get header information
@@ -105,9 +106,18 @@ class Message():
         payload += self.data
         return payload
     
+
     """ Set ID for DNS packet """
     def set_identifier(self, identifier):
-        self.identifier = Message.int_to_net(identifier)
+        if isinstance(identifier, int):
+            self.identifier = Message.int_to_net(identifier)
+        elif isinstance(identifier, bytearray):
+            self.identifier = identifier
+        elif isinstance(identifier, bytes):
+            self.identifier = bytearray(identifier)
+        else:
+            pass
+        return self.identifier
 
 
     """ Set flags for DNS packet """
@@ -129,6 +139,7 @@ class Message():
             hex_str = int(flag_string, 2).to_bytes(2, "big")
             self.flags = bytearray(hex_str)
             return self.flags
+
 
     """ Modify Question Count manually """
     def set_QDCount(self, count):
@@ -167,6 +178,7 @@ class Message():
         self.data += question
         return question
 
+
     def get_header(self):
         qr=Message.get_bits(self.flags[0], 7)
         opcode=Message.get_bits(self.flags[0], 3, 6)
@@ -176,24 +188,22 @@ class Message():
         ra=Message.get_bits(self.flags[1], 7)
         z=Message.get_bits(self.flags[1], 5, 6)
         rcode=Message.get_bits(self.flags[1], 0, 4)
-        flags = (qr, opcode, aa, tc, rd, ra, z, rcode)
-        return (
-                Message.net_to_int(self.identifier),
-                flags,
+        return (Message.net_to_int(self.identifier),
+                (qr, opcode, aa, tc, rd, ra, z, rcode),
                 Message.net_to_int(self.QDCount),
                 Message.net_to_int(self.ANCount),
                 Message.net_to_int(self.NSCount),
-                Message.net_to_int(self.ARCount)
-                )
+                Message.net_to_int(self.ARCount))
          
 
     def get_questions(self):
         pass
-data = bytearray.fromhex("db42 8180 0001 0001 0000 0000 0377 7777 0c6e 6f72 7468 6561 7374 6572 6e03 6564 7500 0001 0001 c00c 0001 0001 0000 0258 0004 9b21 1144")
-x = Message()
-x.decode(data)
-print(x.flags)
-print(x.get_header())
+
+
+# data = bytearray.fromhex("db42 8180 0001 0001 0000 0000 0377 7777 0c6e 6f72 7468 6561 7374 6572 6e03 6564 7500 0001 0001 c00c 0001 0001 0000 0258 0004 9b21 1144")
+# x = Message()
+# print(x.flags)
+# print(x.get_header())
 # x = Message()
 # x.set_identifier(48879)
 # x.set_flags(rd=1)
