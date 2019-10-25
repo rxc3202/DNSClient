@@ -71,26 +71,29 @@ class Message():
         return ((byte << shift) & mask) >> (start + shift)
 
 
+    """ Encode an integer into a byte array """
     @classmethod
     def int_to_net(cls, n):
         return bytearray((n).to_bytes(2, "big"))
 
 
+    """ Decode a byte array into an integer """
     @classmethod
     def net_to_int(cls, network_byte):
         return int(network_byte.hex(), 16)
 
+    """ Decode DNS packet and place fields into this instance """
     def decode(self, bytearr):
         # Get header information
-        self.identifier = byetarr[0:3]
-        self.flags = bytearr[3:5]
-        self.QDCount = bytearr[5:7]
-        self.ANCount = bytearr[7:9]
-        self.NSCount = bytearr[9:11]
-        self.ARCount = bytearr[11:13] 
-        self.data = bytearr[13:]
+        self.identifier = bytearr[0:3]
+        self.flags = bytearr[2:4]
+        self.QDCount = bytearr[4:6]
+        self.ANCount = bytearr[6:8]
+        self.NSCount = bytearr[8:10]
+        self.ARCount = bytearr[10:12] 
+        self.data = bytearr[12:]
 
-
+    """ Encode DNS packet as bytestream to send over network """
     def encode(self):
         payload = b''
         payload += self.identifier
@@ -102,11 +105,12 @@ class Message():
         payload += self.data
         return payload
     
-
+    """ Set ID for DNS packet """
     def set_identifier(self, identifier):
         self.identifier = Message.int_to_net(identifier)
 
 
+    """ Set flags for DNS packet """
     def set_flags(self, qr=0, opcode=0, aa=0, tc=0,
             ra=0, rd=0, z=0, rcode=0):
             codes = [
@@ -185,11 +189,15 @@ class Message():
 
     def get_questions(self):
         pass
-        
+data = bytearray.fromhex("db42 8180 0001 0001 0000 0000 0377 7777 0c6e 6f72 7468 6561 7374 6572 6e03 6564 7500 0001 0001 c00c 0001 0001 0000 0258 0004 9b21 1144")
 x = Message()
-x.set_identifier(48879)
-x.set_flags(rd=1)
-x.add_question("www.northeastern.rit.edu")
-x.set_QDCount(1)
+x.decode(data)
+print(x.flags)
 print(x.get_header())
-print(len(x.encode()), "bytes :", x.encode())
+# x = Message()
+# x.set_identifier(48879)
+# x.set_flags(rd=1)
+# x.add_question("www.northeastern.rit.edu")
+# x.set_QDCount(1)
+# print(x.get_header())
+# print(len(x.encode()), "bytes :", x.encode())
