@@ -22,9 +22,6 @@ def main():
     msg.set_flags(rd=1)
     msg.set_QDCount(1)
     msg.add_question(fqdn)
-
-    print(len(msg.encode()), ":", msg.encode())
-    print(msg.get_header())
     
     # Create socket to read packets from network
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
@@ -35,8 +32,8 @@ def main():
             (response, address) = s.recvfrom(512)
             res = Message()
             res.decode(response)
-            print("response:", res.encode())
-            print("header:", res.get_header())
+            print(res.get_header())
+            print(res.encode())
         except socket.gaierror as e:
             print(e)
         s.close()
