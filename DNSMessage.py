@@ -44,8 +44,6 @@ class QTYPE(Enum):
 
 class Message():
 
-    MAX_SIZE = 500
-
     """ All values stored as byte arrays in big endian"""
     def __init__(self):
         self.identifier = bytearray(2)
@@ -54,7 +52,8 @@ class Message():
         self.ANCount = bytearray(2)
         self.NSCount = bytearray(2)
         self.ARCount = bytearray(2)
-        self.data = bytearray(b'')
+        self.questions = []
+        self.records = []
 
     """
     Will get the range of bits within a given byte where
@@ -83,16 +82,36 @@ class Message():
         return int(network_byte.hex(), 16)
 
 
-    """ Decode DNS packet and place fields into this instance """
+    """ Decode DNS packet from a bytearray and place fields into this instance """
     def decode(self, bytearr):
+        if not isinstance(bytearr, bytearray):
+            bytearr = bytearray(bytearr)
         # Get header information
-        self.identifier = bytearr[0:3]
+        self.identifier = bytearr[0:2]
         self.flags = bytearr[2:4]
         self.QDCount = bytearr[4:6]
         self.ANCount = bytearr[6:8]
         self.NSCount = bytearr[8:10]
         self.ARCount = bytearr[10:12] 
-        self.data = bytearr[12:]
+        # Collect Questions 
+        questions = []
+        start = 12
+        for count in range(Message.net_to_int(self.QDCount)):
+            end = bytearr.find(b'\x00', start) + 1 + 4 # include the Question Type/ Class
+            questions.append(bytearray(bytearr[12:end]))
+            start = end
+        # Collect Answers
+        responses = []
+        for count in range(Message.net_to_int(self.ANCount)):
+            end = start + 1 # minimum end is next byte (not possible)
+            end += 1 + 2 + 2 + 4 # type, class, ttl fields taken into account
+            end += Message.net_to_int(bytearr[end:end+2]) + 1 + 1 # 1st is \x00 separator, 2nd is to start next
+            self.records.append(bytearray(bytearr[start:end])) 
+            start = end 
+
+        self.questions = questions
+        self.responses = responses
+
 
     """ Encode DNS packet as bytestream to send over network """
     def encode(self):
@@ -103,11 +122,20 @@ class Message():
         payload += self.ANCount
         payload += self.NSCount
         payload += self.ARCount
-        payload += self.data
+        for q in self.questions:
+            payload += q
+        for r in self.records:
+            payload += r
         return payload
     
 
-    """ Set ID for DNS packet """
+    """
+    Set ID field for DNS packet 
+
+    @args identifier:   the number used as the ID in the form of an
+                        int, bytearray of size 2, or a bytes obj of
+                        size 2
+    """
     def set_identifier(self, identifier):
         if isinstance(identifier, int):
             self.identifier = Message.int_to_net(identifier)
@@ -120,7 +148,18 @@ class Message():
         return self.identifier
 
 
-    """ Set flags for DNS packet """
+    """ 
+    Set flags for DNS packet where each flag is named according
+    to the following. All set to zero when packet is created
+
+    Query/Response flag     = qr
+    Opcode                  = opcode
+    Authoritative Answer    = aa
+    Truncation Flag         = tc
+    Recursion Desired       = rd
+    Zero (cant be modifed)  = z
+    Response Code           = rcode
+    """
     def set_flags(self, qr=0, opcode=0, aa=0, tc=0,
             ra=0, rd=0, z=0, rcode=0):
             codes = [
@@ -141,26 +180,51 @@ class Message():
             return self.flags
 
 
-    """ Modify Question Count manually """
+    """
+    Modify Question count manually. Will not add any records
+    must add those manually afterwards
+    
+    @args count: the amount of Questions in the packet
+    """
     def set_QDCount(self, count):
         self.QDCount = Message.int_to_net(count)
 
 
-    """ Modify Question Count manually """
+    """
+    Modify Answer Record count manually. Will not add any records
+    must add those manually afterwards
+    
+    @args count: the amount of Answer Records in the packet
+    """
     def set_ANCount(self, count):
         self.ANCount = Message.int_to_net(count)
 
 
-    """ Modify Question Count manually """
+    """
+    Modify Authority Record count manually. Will not add any records
+    must add those manually afterwards
+
+    @args count: the amount of Authority Records in the packet
+    """
     def set_NSCount(self, count):
         self.NSCount = Message.int_to_net(count)
 
-    """ Modify Question Count manually """
+    """ 
+    Modify Additional Record count manually
+
+    @args count: the new amount of questions in the packet
+    """
     def set_ARCount(self, count):
         self.ARCount = Message.int_to_net(count)
 
 
-    """ Add a question to your query """
+    """
+    Will add a question to the DNS packet given an FQDN and the
+    type of question to be made
+
+    @args qtype: the type of query made (refer to QTYPE enum)
+    @return: will return the bytearray representing the question
+    """
     def add_question(self, fqdn, qtype=QTYPE.A.value, rsrc_class=1):
         question = bytearray(b'')
         # Generate the Question Name field
@@ -175,11 +239,17 @@ class Message():
         question += Message.int_to_net(qtype)
         # Generate Question Class field
         question += Message.int_to_net(rsrc_class)
-        self.data += question
+        self.questions.append(question)
         return question
 
 
-    def get_header(self):
+    """
+    Will interpret each of the fields as an int (in the 
+    case of the flags it will interpret each field as an int)
+    and then return a tuple in the order they are found in the
+    DNS packet.
+    """
+    def get_header(self, interpret=False):
         qr=Message.get_bits(self.flags[0], 7)
         opcode=Message.get_bits(self.flags[0], 3, 6)
         aa=Message.get_bits(self.flags[0], 2)
@@ -196,18 +266,11 @@ class Message():
                 Message.net_to_int(self.ARCount))
          
 
-    def get_questions(self):
+    def get_questions(self, interpret=False):
+        pass
+    
+
+    def get_responses(self, interpret=False):
         pass
 
 
-# data = bytearray.fromhex("db42 8180 0001 0001 0000 0000 0377 7777 0c6e 6f72 7468 6561 7374 6572 6e03 6564 7500 0001 0001 c00c 0001 0001 0000 0258 0004 9b21 1144")
-# x = Message()
-# print(x.flags)
-# print(x.get_header())
-# x = Message()
-# x.set_identifier(48879)
-# x.set_flags(rd=1)
-# x.add_question("www.northeastern.rit.edu")
-# x.set_QDCount(1)
-# print(x.get_header())
-# print(len(x.encode()), "bytes :", x.encode())
