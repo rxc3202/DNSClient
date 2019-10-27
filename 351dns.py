@@ -32,6 +32,7 @@ def main():
             (response, address) = s.recvfrom(512)
             res = Message()
             res.decode(response)
+            print(res.get_responses())
             print(res.get_header())
             print(res.encode())
         except socket.gaierror as e:
