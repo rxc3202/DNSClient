@@ -277,57 +277,82 @@ class Message():
         pass
     
 
-    #TODO: turn into class methodss
-    @classmethod
-    def _domain_from_pointer(cls, bytearr, offset):
-        data = b''
-        record = bytearr
-        length = record[offset]
-        i = offset
-        while True:
-            length = record[offset]
-            if length == 0:
-                break
-            data += record[i+1:i+length+1] + b'.'
-            i += length + 1
-            offset = i
-        return data
+    """
+    Will parse a pointer to a label if it is in DNS name notation
 
-    @classmethod
-    def _domain_from_label(cls, bytearr, offset):
+    @args offset:   the number representing offset in the packet
+                    where the label is stored as a bytearry[2]
+                    a bytes object of size 2 or an integer
+    """
+    def _domain_from_pointer(self, label_offset):
+        if isinstance(label_offset, bytearray) or isinstance(label_offset, bytes):
+            offset = Message.int_to_net(label_offset[0] & 63, 1) + \
+                    Message.int_to_net(label_offset[1], 1)
+            offset = Message.net_to_int(offset)
+            data = self._domain_from_label(self.encode()[offset:], 0)
+            return data
+        else:
+            data = self._domain_from_label(self.encode()[label_offset:], 0)
+            return data
+
+    """
+    Will parse a label in the form of a bytearray if it is
+    in DNS Name Notation
+
+    @args bytearr: the byte array to parse
+    @args offset: the first byte of the label (which is the
+                    number of bytes to read next)
+    """
+    def _domain_from_label(self, bytearr, offset):
         data = b''
         start = offset
-        while record[start] != 0:
-            end = start + record[start] + 1
-            data += record[start:end]
-            start = end
-        return data
+        # continue reading each of the domains in the label
+        while bytearr[start] != 0:
+            if not Message._is_pointer_byte(bytearr[start]):
+                end = start + bytearr[start]
+                data += bytearr[start+1:end+1] + b'.'
+                start = end + 1
+            else:
+                data += self._domain_from_pointer(bytearr[start:start+2])
+                break # a pointer can only end a label
+        return bytearray(data)
 
 
+    """
+    Will parse the responses held in the Answer section of the 
+    DNS packet and will return a list of tuples in the following format:
+    (name, record_type, record_class, ttl, rsrc_len, rsrc_data) where
+    each field is a bytearray
+    """
     def get_responses(self, interpret=False):
+
+        # TODO: do swtich statement with dictionary
+        def decode_resource(rsrc_data, record_type):
+            case = Message.net_to_int(record_type) 
+            if case == QTYPE.CNAME.value:
+                if Message._is_pointer_byte(rsrc_data[0]):
+                    #offset = self.encode().find(rsrc_data)
+                    return self._domain_from_pointer(rsrc_data[0:2])
+                else:
+                    return self._domain_from_label(rsrc_data, 0)
+            elif case == QTYPE.A.value:
+                return rsrc_data
+            else:
+                pass
+
         decoded_responses = []
         for record in self.records:
             # if first two bits are turned on, it is a pointer
             if Message._is_pointer_byte(record[0]):
                 # the rest of the 2-byte field is an offset
-                offset = Message.int_to_net(record[0] & 63, 1) + Message.int_to_net(record[1], 1)
-                offset = Message.net_to_int(offset)
-                name = Message._domain_from_pointer(self.encode(), offset)
+                name = self._domain_from_pointer(record[0:2])
                 record_type = record[2:4]
                 record_class = record[4:6]
                 ttl = record[6:10]
                 data_len = record[10:12]
                 rsrc_data = record[12:]
-
-               
+                decoded_rsrc = decode_resource(rsrc_data, record_type)
+                decoded_responses.append((name, record_type, record_class, ttl, data_len, decoded_rsrc))
             else: # its just a regular label
-                data = ""
-                start = 0
-                while record[start] != 0:
-                    end = start + record[start] + 1
-                    data += record[start:end]
-                    start = end
-                # append (RECORD_TYPE, DOMAIN, RESPONSE)
-                length = record[end + 9: end + 11] # length 9 and 10th bit after end of name
-                resource_data = record[11: length + 1]
-                decoded_responses.append((Message.net_to_int(record[end:end+2]), None, resource_data))
+                pass
+        return decoded_responses
