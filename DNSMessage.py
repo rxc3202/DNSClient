@@ -70,16 +70,23 @@ class Message():
         return ((byte << shift) & mask) >> (start + shift)
 
 
-    """ Encode an integer into a byte array """
+    """ Encode an integer into a big endian byte array """
     @classmethod
-    def int_to_net(cls, n):
-        return bytearray((n).to_bytes(2, "big"))
+    def int_to_net(cls, n, byte_length=2):
+        return bytearray((n).to_bytes(byte_length, "big"))
 
 
     """ Decode a byte array into an integer """
     @classmethod
-    def net_to_int(cls, network_byte):
-        return int(network_byte.hex(), 16)
+    def net_to_int(cls, network_bytes):
+        return int(network_bytes.hex(), 16)
+
+
+    """ See if a given byte is a pointer byte """
+    @classmethod
+    def _is_pointer_byte(cls, byte):
+        return Message.get_bits(byte, 6, 7) == Message.get_bits(192, 6, 7)
+
 
 
     """ Decode DNS packet from a bytearray and place fields into this instance """
@@ -270,7 +277,57 @@ class Message():
         pass
     
 
+    #TODO: turn into class methodss
+    @classmethod
+    def _domain_from_pointer(cls, bytearr, offset):
+        data = b''
+        record = bytearr
+        length = record[offset]
+        i = offset
+        while True:
+            length = record[offset]
+            if length == 0:
+                break
+            data += record[i+1:i+length+1] + b'.'
+            i += length + 1
+            offset = i
+        return data
+
+    @classmethod
+    def _domain_from_label(cls, bytearr, offset):
+        data = b''
+        start = offset
+        while record[start] != 0:
+            end = start + record[start] + 1
+            data += record[start:end]
+            start = end
+        return data
+
+
     def get_responses(self, interpret=False):
-        pass
+        decoded_responses = []
+        for record in self.records:
+            # if first two bits are turned on, it is a pointer
+            if Message._is_pointer_byte(record[0]):
+                # the rest of the 2-byte field is an offset
+                offset = Message.int_to_net(record[0] & 63, 1) + Message.int_to_net(record[1], 1)
+                offset = Message.net_to_int(offset)
+                name = Message._domain_from_pointer(self.encode(), offset)
+                record_type = record[2:4]
+                record_class = record[4:6]
+                ttl = record[6:10]
+                data_len = record[10:12]
+                rsrc_data = record[12:]
 
-
+               
+            else: # its just a regular label
+                data = ""
+                start = 0
+                while record[start] != 0:
+                    end = start + record[start] + 1
+                    data += record[start:end]
+                    start = end
+                # append (RECORD_TYPE, DOMAIN, RESPONSE)
+                length = record[end + 9: end + 11] # length 9 and 10th bit after end of name
+                resource_data = record[11: length + 1]
+                decoded_responses.append((Message.net_to_int(record[end:end+2]), None, resource_data))
