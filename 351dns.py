@@ -29,7 +29,7 @@ def dump_packet(encoded_packet):
         # ascii value
         s2 = "".join([chr(i) if 32 <= i <= 127 else "." for i in bytes.fromhex(s1)])
 
-        print(f"[{block_number * 16:04x}]  {s1}  {s2}")
+        print(f"[{block_number * 16:04x}]  {s1:<48}  {s2}")
 
         block_number += 1
         p_hex = p_hex[(hex_eight_len * 2 + 2):]
