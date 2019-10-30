@@ -25,4 +25,5 @@ the required formatting.
 
 ## Testing Process
 
-* 
+* Tested locally using @8.8.8.8 www.rit.edu
+* Tested on glados using @8.8.8.8 www.rit.edu
