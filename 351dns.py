@@ -47,6 +47,10 @@ def print_response(res):
             output = "IP\t" + socket.inet_ntoa(response[5])
         else:
             output = QTYPE(record_type).name + "\t" + response[5].decode('utf-8')
+        if res.get_header()[1][2] == 1:
+            output += "\tauth"
+        else:
+            output += "\tnoauth"
 
         print(output)
 
@@ -66,7 +70,7 @@ def wait_for_packet_with_identifier(packet_id, s):
             res = Message()
             res.decode(response)
             if Message.net_to_int(res.identifier) == packet_id:
-                rcode = res.get_bits(res.flags[1], 0, 4)
+                rcode = res.get_header()[1][7]
                 if rcode == RCODE.NO_ERROR.value:
                     print_response(res)
                 elif rcode == RCODE.NAME_ERROR.value:
