@@ -15,7 +15,7 @@ The program then waits for the packet with the same identifier
 as the sent one to arrive or times out after 5 seconds. The response is then printed in 
 the required formatting. 
 
-## Challenges Faced`
+## Challenges Faced
 
 * Logical bitwise operations in python ore more challenging than in C. 
 * When shifting bits, the integer does not stay within an 8bit value, but continues extending.
@@ -30,6 +30,8 @@ the required formatting.
 * Graceful error handling. 
 
 ## Testing Process
+
+We tested the following nameservers and urls for successful functionality. For each of these the program produced the expected correct result of the lookup. 
 
 ### Tested locally using 
 * @8.8.8.8 www.rit.edu
@@ -69,4 +71,5 @@ the required formatting.
 * @129.21.22.218 www.yandex.ru
 * @129.21.22.218 www.index.hu
 
-
+### Testing NORESPONSE
+We also tested an expected no response message by using an invalid nameserver with a url for ex. @129.21.5.19 www.rit.edu. The program produced the NORESPONSE message as expected.
