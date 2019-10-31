@@ -25,5 +25,42 @@ the required formatting.
 
 ## Testing Process
 
-* Tested locally using @8.8.8.8 www.rit.edu
-* Tested on glados using @8.8.8.8 www.rit.edu
+### Tested locally using 
+* @8.8.8.8 www.rit.edu
+* @8.8.8.8 www.google.com
+* @8.8.8.8 www.apple.com
+* @8.8.8.8 www.yandex.ru
+* @8.8.8.8 www.index.hu
+
+* @129.21.3.17 www.rit.edu
+* @129.21.3.17 www.google.com
+* @129.21.3.17 www.apple.com
+* @129.21.3.17 www.yandex.ru
+* @129.21.3.17 www.index.hu
+
+* @129.21.4.18 www.rit.edu
+* @129.21.4.18 www.google.com
+* @129.21.4.18 www.apple.com
+* @129.21.4.18 www.yandex.ru
+* @129.21.4.18 www.index.hu
+
+### Tested on Glados using
+* @8.8.8.8 www.rit.edu
+* @8.8.8.8 www.google.com
+* @8.8.8.8 www.apple.com
+* @8.8.8.8 www.yandex.ru
+* @8.8.8.8 www.index.hu
+
+* @129.21.3.17 www.rit.edu
+* @129.21.3.17 www.google.com
+* @129.21.3.17 www.apple.com
+* @129.21.3.17 www.yandex.ru
+* @129.21.3.17 www.index.hu
+
+* @129.21.22.218 www.rit.edu
+* @129.21.22.218 www.google.com
+* @129.21.22.218 www.apple.com
+* @129.21.22.218 www.yandex.ru
+* @129.21.22.218 www.index.hu
+
+
